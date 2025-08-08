@@ -320,7 +320,7 @@ class User(Document):
 				self.set(field, sanitize_html(field_value, always_sanitize=True))
 
 	def set_full_name(self):
-		self.full_name = " ".join(filter(None, [self.first_name, self.last_name]))
+		self.full_name = " ".join(filter(None, [self.last_name, self.first_name]))
 
 	def check_enable_disable(self):
 		# do not allow disabling administrator/guest
@@ -449,8 +449,8 @@ class User(Document):
 		return link
 
 	def get_fullname(self):
-		"""get first_name space last_name"""
-		return (self.first_name or "") + ((self.first_name and " ") or "") + (self.last_name or "")
+		return (self.last_name or "") + ((self.last_name and " ") or "") + (self.first_name or "")
+
 
 	def password_reset_mail(self, link):
 		reset_password_template = frappe.db.get_system_setting("reset_password_template")
@@ -1343,7 +1343,7 @@ def generate_keys(user: str):
 	user_details.api_secret = api_secret
 	user_details.save()
 
-	return {"api_key": user_details.api_key, "api_secret": api_secret}
+	return {"api_secret": api_secret}
 
 
 @frappe.whitelist()

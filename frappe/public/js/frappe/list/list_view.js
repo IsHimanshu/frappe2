@@ -652,10 +652,7 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 		let $count = this.get_count_element();
 		this.get_count_str().then((count) => {
 			$count.html(`<span>${count}</span>`);
-			if (
-				this.count_upper_bound &&
-				(this.total_count == this.count_upper_bound || this.total_count == null)
-			) {
+			if (this.count_upper_bound) {
 				$count.attr(
 					"title",
 					__(
@@ -696,7 +693,7 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 				${__(subject_field.label)}
 			</span>
 		`;
-		let $columns = this.columns
+		const $columns = this.columns
 			.map((col) => {
 				let classes = [
 					"list-row-col ellipsis",
@@ -720,14 +717,6 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 			`;
 			})
 			.join("");
-
-		// Add column for button and dropdown button to the header
-		if (this.settings.button) {
-			$columns += `<div class="list-row-col hidden-xs"></div>`;
-		}
-		if (this.settings.dropdown_button) {
-			$columns += `<div class="list-row-col hidden-xs"></div>`;
-		}
 
 		const right_html = `
 			<span class="list-count" style=""></span>
@@ -767,12 +756,7 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 	}
 
 	get_left_html(doc) {
-		let left_html = this.columns.map((col) => this.get_column_html(col, doc)).join("");
-
-		left_html += this.generate_button_html(doc);
-		left_html += this.generate_dropdown_html(doc);
-
-		return left_html;
+		return this.columns.map((col) => this.get_column_html(col, doc)).join("");
 	}
 
 	get_right_html(doc) {
@@ -957,7 +941,23 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 
 	get_meta_html(doc) {
 		let html = "";
+		let settings_button = "";
+		let button_section = "";
+		const dropdown_button = this.generate_dropdown_html(doc);
 
+		if (this.settings.button && this.settings.button.show(doc)) {
+			settings_button = `
+				<span class="list-actions">
+					<button class="btn btn-action btn-default btn-xs"
+						data-name="${doc.name}" data-idx="${doc._idx}"
+						title="${this.settings.button.get_description(doc)}">
+						${this.settings.button.get_label(doc)}
+					</button>
+				</span>
+			`;
+		}
+
+		button_section = settings_button + dropdown_button;
 		const modified = comment_when(doc.modified, true);
 
 		let assigned_to = ``;
@@ -980,7 +980,7 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 		html += `
 			<div class="level-item list-row-activity hidden-xs">
 				<div class="hidden-md hidden-xs d-flex">
-					${assigned_to}
+					${button_section || assigned_to}
 				</div>
 				<span class="modified">${modified}</span>
 				${comment_count || ""}
@@ -997,29 +997,8 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 		return html;
 	}
 
-	generate_button_html(doc) {
-		let button_container = "";
-		if (this.settings.button) {
-			const button_html = `
-				<button class="btn btn-action btn-default btn-xs ellipsis"
-					data-name="${doc.name}" data-idx="${doc._idx}"
-					title="${this.settings.button.get_description(doc)}">
-						${this.settings.button.get_label(doc)}
-				</button>
-			`;
-			button_container += `
-				<div class="list-row-col ellipsis hidden-xs">
-					${this.settings.button.show(doc) ? button_html : "<span></span>"}
-				</div>
-			`;
-		}
-
-		return button_container;
-	}
-
 	generate_dropdown_html(doc) {
-		let dropdown_container = "";
-
+		let dropdown_button = "";
 		if (this.settings.dropdown_button) {
 			let button_actions = "";
 			this.settings.dropdown_button.buttons.forEach((button, index) => {
@@ -1033,24 +1012,21 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 				}
 			});
 
-			let dropdown_buttons = "";
 			if (button_actions) {
-				dropdown_buttons = `
+				dropdown_button = `
+				<div class="inner-group-button mr-2" data-name="${doc.name}" data-label="${
+					this.settings.dropdown_button.get_label
+				}">
 					<button type="button" class="btn btn-xs btn-default ellipsis" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 						${this.settings.dropdown_button.get_label}
 						${frappe.utils.icon("select", "xs")}
 					</button>
 					<div role="menu" class="dropdown-menu">${button_actions}</div>
+				</div>
 				`;
 			}
-
-			dropdown_container = `
-				<div class="list-row-col hidden-xs inner-group-button" data-name="${doc.name}" data-label="${this.settings.dropdown_button.get_label}">
-					${dropdown_buttons}
-				</div>
-			`;
 		}
-		return dropdown_container;
+		return dropdown_button;
 	}
 
 	apply_styles_basedon_dropdown() {
@@ -1842,7 +1818,7 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 			action: () => this.toggle_side_bar(),
 			condition: () => !this.page.disable_sidebar_toggle,
 			standard: true,
-			shortcut: "Ctrl+G",
+			shortcut: "Ctrl+K",
 		});
 
 		if (frappe.user.has_role("System Manager") && frappe.boot.developer_mode) {
